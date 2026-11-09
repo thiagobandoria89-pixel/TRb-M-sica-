@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<title>TRb Música</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{--bg:#0b1220;--panel:#131f32;--panel2:#1b2a40;--text:#f4f7fb;--muted:#aab8ca;--accent:#ffb547;--green:#54d6a0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:16px 18px;background:#101827;border-bottom:1px solid #2a3a50;display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:4}
+.brand{font-weight:850;letter-spacing:.4px;font-size:20px}.brand span{color:var(--accent)}.sub{font-size:12px;color:var(--muted)}
+main{max-width:980px;margin:auto;padding:16px;display:grid;gap:14px}
+.card{background:var(--panel);border:1px solid #2a3a50;border-radius:16px;padding:16px}
+h1,h2,h3,p{margin-top:0}h2{font-size:18px;margin-bottom:10px}
+button,.filebtn{border:0;border-radius:12px;padding:12px 15px;background:var(--accent);color:#201608;font-weight:750;font-size:14px;cursor:pointer}
+button.secondary,.filebtn.secondary{background:var(--panel2);color:var(--text);border:1px solid #3a4d66}
+button.danger{background:#71333b;color:white}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.row>*{flex:0 0 auto}
+input[type=file]{display:none}input[type=range]{width:100%;accent-color:var(--accent)}
+select{background:var(--panel2);color:white;border:1px solid #3a4d66;border-radius:10px;padding:10px}
+#songTitle{font-size:22px;font-weight:850;margin-bottom:4px}#songMeta{color:var(--muted);font-size:13px;margin-bottom:15px}
+.stage{background:#050a12;border:1px solid #26364b;border-radius:16px;padding:18px 14px;min-height:330px;display:flex;flex-direction:column;justify-content:center;gap:18px}
+.stageLine{padding:12px 10px;border-radius:12px;color:#7f91a8;font-size:clamp(20px,4.8vw,32px);line-height:1.5;transition:.2s}
+.stageLine.active{background:#1b2b40;color:white;box-shadow:inset 4px 0 var(--accent);font-weight:750}
+.chords{color:var(--accent);font-size:.72em;font-weight:850;letter-spacing:.5px;min-height:1.2em;white-space:pre-wrap}
+.small{font-size:12px;color:var(--muted)}.status{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:#64748b}.dot.on{background:var(--green);box-shadow:0 0 12px #54d6a0}
+.meter{height:8px;background:#25364b;border-radius:10px;overflow:hidden;margin:10px 0}.meter>div{height:100%;width:0;background:var(--green);transition:width .08s}
+#transcript{min-height:44px;background:#0b1422;padding:10px;border-radius:10px;color:#c9d6e5;font-size:13px;overflow-wrap:anywhere}
+#pdfPages{display:grid;gap:12px}canvas{width:100%;height:auto;background:white;border-radius:8px}
+.pageText{white-space:pre-wrap;max-height:160px;overflow:auto;background:#0b1422;padding:10px;border-radius:8px;font-size:12px;color:#d2dbea}
+.hidden{display:none!important}.footer{padding:8px 16px 26px;text-align:center;color:#718198;font-size:11px}
+@media(min-width:760px){main{grid-template-columns:1fr 1fr}.wide{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<header><div><div class="brand">TRb <span>MÚSICA</span></div><div class="sub">Seu repertório, pronto para o palco</div></div><div class="status"><i class="dot" id="micDot"></i><span id="micLabel">Microfone desligado</span></div></header>
+<main>
+<section class="card wide">
+<h2>🎵 Música-piloto</h2>
+<div id="songTitle">Tempo Perdido</div><div id="songMeta">Legião Urbana • Tom: C • Música de demonstração editável</div>
+<div class="row"><button id="stageBtn">Modo palco</button><button class="secondary" id="prevBtn">◀ Linha</button><button class="secondary" id="nextBtn">Linha ▶</button><button class="secondary" id="resetBtn">Reiniciar</button></div>
+<div class="small" style="margin-top:10px">Use os botões para avançar manualmente enquanto validamos o acompanhamento pelo microfone.</div>
+</section>
+<section class="card wide" id="stageCard">
+<div class="row" style="justify-content:space-between"><h2>🎤 Modo palco</h2><div class="small" id="lineCount">Linha 1</div></div>
+<div class="stage" id="stage"></div>
+<div class="row" style="justify-content:space-between;margin-top:12px"><button class="secondary" id="fontDown">A−</button><button class="secondary" id="fontUp">A+</button><label class="status"><input id="chordsToggle" type="checkbox" checked> Mostrar cifras</label></div>
+</section>
+<section class="card">
+<h2>🎙️ Acompanhamento pelo microfone</h2>
+<p class="small">Capta voz e instrumentos juntos. O nível de áudio funciona como teste do microfone. A transcrição é experimental: navegadores normalmente reconhecem fala melhor que canto.</p>
+<div class="row"><button id="micStart">Iniciar microfone</button><button class="secondary" id="micStop" disabled>Parar</button></div>
+<div class="meter"><div id="meterFill"></div></div>
+<div id="transcript">Aguardando áudio…</div>
+<div class="small" style="margin-top:8px">Acompanhamento automático: <strong id="followStatus">em espera</strong></div>
+</section>
+<section class="card">
+<h2>📄 Importar repertório em PDF</h2>
+<p class="small">O PDF original é preservado para consulta. A extração de texto é uma ajuda inicial; PDFs com colunas e cifras posicionadas precisam de revisão antes de usar no palco.</p>
+<div class="row"><label class="filebtn" for="pdfInput">Escolher PDF</label><input id="pdfInput" type="file" accept="application/pdf"><button class="secondary" id="clearPdf">Fechar PDF</button></div>
+<div id="pdfInfo" class="small" style="margin-top:10px">Nenhum PDF importado.</div>
+<div id="pdfPages" style="margin-top:12px"></div>
+</section>
+<section class="card wide">
+<h2>🧭 Próximas etapas</h2>
+<p class="small">Esta versão valida a leitura do repertório, a visualização de palco e a entrada de áudio. O próximo salto é alinhar o canto à música cadastrada, usando referência musical e testes em ensaio, para não depender apenas de reconhecimento de fala.</p>
+</section>
+</main>
+<div class="footer">TRb Música • Protótipo de desenvolvimento • Mantenha o aparelho desbloqueado durante os testes</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+const songLines=[
+ {c:"C                 Am",t:"Todos os dias quando acordo"},
+ {c:"Bm                         Em",t:"Não tenho mais o tempo que passou"},
+ {c:"C                 Am",t:"Mas tenho muito tempo"},
+ {c:"Bm                  Em",t:"Temos todo o tempo do mundo"},
+ {c:"C                       Am",t:"Todos os dias antes de dormir"},
+ {c:"Bm                              Em",t:"Lembro e esqueço como foi o dia"},
+ {c:"C                  Am",t:"Sempre em frente"},
+ {c:"Bm                    Em",t:"Não temos tempo a perder"},
+ {c:"C                 Am",t:"Nosso suor sagrado"},
+ {c:"Bm",t:"É bem mais belo que esse"},
+ {c:"Em",t:"Sangue amargo"},
+ {c:"C             Am",t:"E tão sério"},
+ {c:"Bm       Em",t:"E selvagem"}
+];
+let current=0,fontSize=27,showChords=true,recognition=null,audioCtx=null,stream=null,raf=0,wakeLock=null;
+const stage=document.querySelector('#stage');
+function render(){stage.innerHTML='';songLines.forEach((line,i)=>{const el=document.createElement('div');el.className='stageLine'+(i===current?' active':'');el.style.fontSize=`clamp(${fontSize-5}px,4.8vw,${fontSize+5}px)`;el.innerHTML=(showChords?`<div class="chords">${escapeHtml(line.c)}</div>`:'')+`<div>${escapeHtml(line.t)}</div>`;stage.append(el)});stage.children[current]?.scrollIntoView({block:'nearest',behavior:'smooth'});document.querySelector('#lineCount').textContent=`Linha ${current+1} de ${songLines.length}`}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function move(n){current=Math.max(0,Math.min(songLines.length-1,current+n));render()}
+document.querySelector('#prevBtn').onclick=()=>move(-1);document.querySelector('#nextBtn').onclick=()=>move(1);document.querySelector('#resetBtn').onclick=()=>{current=0;render()};
+document.querySelector('#fontUp').onclick=()=>{fontSize=Math.min(48,fontSize+2);render()};document.querySelector('#fontDown').onclick=()=>{fontSize=Math.max(18,fontSize-2);render()};document.querySelector('#chordsToggle').onchange=e=>{showChords=e.target.checked;render()};
+document.querySelector('#stageBtn').onclick=()=>document.querySelector('#stageCard').requestFullscreen?.();
+render();
+function setMic(on){document.querySelector('#micDot').classList.toggle('on',on);document.querySelector('#micLabel').textContent=on?'Microfone ativo':'Microfone desligado';document.querySelector('#micStart').disabled=on;document.querySelector('#micStop').disabled=!on}
+async function startMic(){
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();const src=audioCtx.createMediaStreamSource(stream),an=audioCtx.createAnalyser();an.fftSize=512;src.connect(an);const data=new Uint8Array(an.frequencyBinCount);
+  const tick=()=>{an.getByteTimeDomainData(data);let sum=0;for(const v of data){const x=(v-128)/128;sum+=x*x}const rms=Math.sqrt(sum/data.length);document.querySelector('#meterFill').style.width=Math.min(100,rms*260)+'%';raf=requestAnimationFrame(tick)};tick();setMic(true);
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(SR){recognition=new SR();recognition.lang='pt-BR';recognition.continuous=true;recognition.interimResults=true;recognition.onresult=e=>{let text='';for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript+' ';document.querySelector('#transcript').textContent=text.trim()||'Ouvindo…';const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\s]/gu,'');const heard=norm(text);let best=-1,score=0;songLines.forEach((l,i)=>{const words=norm(l.t).split(/\s+/).filter(w=>w.length>3);const hits=words.filter(w=>heard.includes(w)).length;const sc=hits/Math.max(1,words.length);if(sc>score){score=sc;best=i}});if(best>=0&&score>=.45){current=best;render();document.querySelector('#followStatus').textContent='possível trecho identificado (experimental)'}}
+   ;recognition.onerror=e=>{document.querySelector('#transcript').textContent='Áudio ativo. Transcrição: '+e.error};recognition.onend=()=>{if(stream)try{recognition.start()}catch(e){}};recognition.start();document.querySelector('#followStatus').textContent='microfone ativo; aguardando identificação';
+  }else{document.querySelector('#transcript').textContent='Microfone ativo. Este navegador não oferece reconhecimento de fala; o medidor de áudio continua funcionando.';document.querySelector('#followStatus').textContent='somente nível de áudio neste navegador'}
+  if('wakeLock'in navigator)try{wakeLock=await navigator.wakeLock.request('screen')}catch(e){}
+ }catch(e){alert('Não foi possível acessar o microfone. Verifique a permissão e abra o app por HTTPS. Detalhe: '+e.message)}
+}
+function stopMic(){if(recognition){recognition.onend=null;recognition.stop();recognition=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}if(audioCtx){audioCtx.close();audioCtx=null}cancelAnimationFrame(raf);document.querySelector('#meterFill').style.width='0';setMic(false);document.querySelector('#followStatus').textContent='em espera';if(wakeLock){wakeLock.release();wakeLock=null}}
+document.querySelector('#micStart').onclick=startMic;document.querySelector('#micStop').onclick=stopMic;
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}
+document.querySelector('#pdfInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;if(!window.pdfjsLib){alert('Não foi possível carregar o leitor de PDF. Verifique a conexão.');return}try{const bytes=await f.arrayBuffer(),pdf=await pdfjsLib.getDocument({data:bytes}).promise;document.querySelector('#pdfInfo').textContent=`${f.name} • ${pdf.numPages} páginas`;const root=document.querySelector('#pdfPages');root.innerHTML='';for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p),vp=page.getViewport({scale:1.15}),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');canvas.width=vp.width;canvas.height=vp.height;await page.render({canvasContext:ctx,viewport:vp}).promise;const wrap=document.createElement('div');wrap.append(canvas);const btn=document.createElement('button');btn.className='secondary';btn.textContent='Ver texto extraído da página '+p;const pre=document.createElement('pre');pre.className='pageText hidden';btn.onclick=async()=>{if(pre.textContent)return pre.classList.toggle('hidden');const tc=await page.getTextContent();pre.textContent=tc.items.map(x=>x.str).join(' ');pre.classList.remove('hidden')};wrap.append(btn,pre);root.append(wrap)}}catch(err){alert('Erro ao abrir o PDF: '+err.message)}};
+document.querySelector('#clearPdf').onclick=()=>{document.querySelector('#pdfPages').innerHTML='';document.querySelector('#pdfInfo').textContent='Nenhum PDF importado.';document.querySelector('#pdfInput').value=''};
+</script>
+</body></html>
